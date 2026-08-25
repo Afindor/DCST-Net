@@ -1,16 +1,23 @@
 # DCST-Net
 
-This repository contains the reference implementation of **DCST-Net**, a
-mask-preserving dual-time forecasting system for Web airfare alerts. The code
-follows the experimental order used by the method: construct serving-valid
-surfaces and as-of route graphs, train the offline residual forecaster,
-materialize its detached trajectories, train decision-aware fusion, and replay
-the fixed alert policy after each target horizon closes.
+DCST-Net is a dual-time forecasting system for airfare price alerts. It models
+each itinerary as a booking-date by departure-date surface while preserving the
+availability mask seen by the serving system. Route structure, calendar
+patterns, and a residual price process are combined to produce trajectories
+that can be consumed by a fixed alert policy.
+
+The project is organized around the training pipeline used in our experiments:
+
+1. build masked price surfaces and as-of route graphs;
+2. train the residual trajectory model;
+3. materialize detached trajectory features;
+4. train the decision-aware fusion model; and
+5. evaluate forecasts and alerts in rolling replay.
 
 ## Quick start
 
-DCST-Net requires Python 3.11 or newer. A CPU is sufficient for the included
-example; CUDA is recommended for full-scale experiments.
+DCST-Net requires Python 3.11 or newer. The example configuration runs on CPU;
+CUDA is recommended for larger datasets.
 
 ```bash
 python3 -m venv .venv
@@ -19,18 +26,15 @@ python -m pip install --upgrade pip
 python -m pip install -e .
 python scripts/generate_example_data.py
 dcst run --config configs/demo.toml
-python -m unittest discover -s tests -v
-python scripts/audit_repository.py
 ```
 
-The demo writes checkpoints, the immutable Phase-A trend cache, predictions,
-metrics, and a SHA-256 artifact manifest under `artifacts/demo/`. The example
-corpus is deterministic and is intended to verify execution rather than
-reproduce the proprietary-data measurements in the paper.
+The run writes checkpoints, detached trajectory features, predictions, and
+metrics to `artifacts/demo/`. The generated dataset is deterministic, so it is
+also useful for checking changes to preprocessing or model code.
 
-## Execution contract
+## Training workflow
 
-The command-line interface exposes each artifact boundary independently:
+Each stage can be run separately when developing or comparing model variants:
 
 ```bash
 dcst prepare --config configs/demo.toml
@@ -40,56 +44,74 @@ dcst train-phase-b --config configs/demo.toml
 dcst evaluate --config configs/demo.toml
 ```
 
-`dcst run` executes the same commands in order. Phase B refuses to start until
-the Phase-A cache exists, and checkpoint loading verifies the configuration
-digest. Test replay uses the latest completed weekly graph snapshot no later
-than each request date.
+`dcst run` invokes the same stages in order. Phase A learns residual price
+trajectories, which are materialized before Phase B trains the dual-time fusion
+model. Keeping this boundary explicit prevents gradients from Phase B from
+changing the trajectory generator. During rolling replay, graph features are
+selected from the latest completed weekly snapshot available at the request
+date.
 
 ## Repository layout
 
 ```text
-configs/                         Paper and executable example configurations
-data/example/                    Deterministic, non-production input sample
-scripts/                         End-to-end, baseline-export, and audit commands
+configs/                         Experiment configurations
+data/example/                    Generated example dataset
+scripts/                         Data generation, export, and utility commands
 src/dcstnet/data/                Schemas, masks, surfaces, splits, route graphs
 src/dcstnet/models/              Graph, calendar, diffusion, and fusion modules
 src/dcstnet/training/            Phase A, detached cache, and Phase B training
 src/dcstnet/evaluation/          Rolling replay, metrics, and user bootstrap
-src/dcstnet/serving/             Trajectory cache and fixed alert rule
-tests/                           Unit and end-to-end contract tests
+src/dcstnet/serving/             Trajectory cache and alert policy
+tests/                           Unit and end-to-end tests
 ```
 
-## Paper configuration
+## Configurations
 
-`configs/paper_sampled_h15.toml` and `configs/paper_industry_h15.toml` contain
-the reported architecture and optimization settings for the 15-day analysis:
-two graph layers, four heads, twelve retained neighbors, 64/32 graph widths,
-calendar fields `{3, 7, 14, 30}`, a seven-day residual trend, a 128-unit
-two-layer denoiser, 1,000 diffusion steps, 20 deterministic DDIM steps, and the
-reported decision-loss weights. For the other horizons, copy the relevant
-configuration and change only `data.horizon` to 3, 7, or 30.
+`configs/paper_sampled_h15.toml` and `configs/paper_industry_h15.toml` record
+the sampled-data and industry-data settings used for the 15-day horizon. They
+configure two graph layers, four attention heads, twelve retained neighbors,
+64/32-dimensional graph representations, calendar windows `{3, 7, 14, 30}`, a
+seven-day residual trend, a two-layer 128-unit denoiser, 1,000 diffusion steps,
+20 deterministic DDIM steps, and the decision-loss weights. Experiments at 3,
+7, and 30 days use the same model settings with the corresponding
+`data.horizon` value.
 
-The production logs cannot be distributed. To use an authorized corpus, place
-files under the paths named by a paper configuration or change those paths to
-another local location. The required schemas are documented in [DATA.md](DATA.md).
-Normalization is fitted on the training split only; unavailable cells are
-masked before any fill or encoding step.
+Configuration digests are stored with checkpoints and checked when a run is
+resumed. Random seeds, input paths, split dates, model sizes, and optimization
+settings are all controlled from TOML files.
 
-## Baseline contract
+## Data
 
-The paper uses official implementations of ARIMA, PatchTST, TimesNet,
-iTransformer, MTGNN, PDFormer, and STAEformer. Their third-party source trees
-are not copied into this repository. `scripts/export_baseline_arrays.py`
-exports the booking-date-ordered values, masks, targets, and training-fitted
-normalization used by those implementations. Predictions from any baseline can
-be evaluated under the same alert policy by converting them to the CSV layout
-written by `dcst evaluate` and calling the metric functions in
-`dcstnet.evaluation.metrics`.
+The airfare logs used in the industry experiments are not publicly
+distributable. [DATA.md](DATA.md) describes the input tables and fields needed
+to run the pipeline on another dataset. The generated example under
+`data/example/` follows the same schemas on a small synthetic route network.
 
-## Reproducibility boundary
+The data loader applies the serving-time availability mask before filling or
+encoding a price surface. Normalization statistics are fitted on the training
+split, and route features are read from dated snapshots rather than a graph
+constructed over the full observation period.
 
-The repository reproduces the processing, model, training, replay, metric, and
-serving contracts. It does not contain production records, production model
-checkpoints, user-level experiment aggregates, or the paper's reported output
-tables. The included example produces its own clearly separated run artifacts.
-See [REPRODUCIBILITY.md](REPRODUCIBILITY.md) for the paper-to-code crosswalk.
+## Baseline integration
+
+Our experiments use the official implementations of ARIMA, PatchTST, TimesNet,
+iTransformer, MTGNN, PDFormer, and STAEformer. To avoid maintaining forks of
+those projects, `scripts/export_baseline_arrays.py` exports booking-date-ordered
+values, masks, targets, and training-split normalization in a common array
+format. Baseline predictions can then be evaluated with the alert metrics in
+`dcstnet.evaluation.metrics` after conversion to the CSV layout produced by
+`dcst evaluate`.
+
+## Development checks
+
+```bash
+python -m unittest discover -s tests -v
+ruff check src scripts tests
+python scripts/audit_repository.py
+python scripts/source_manifest.py
+```
+
+The tests cover temporal masking, as-of graph selection, phase separation,
+losses, replay metrics, serving behavior, and an end-to-end run on the example
+dataset. [REPRODUCIBILITY.md](REPRODUCIBILITY.md) provides a compact map from
+the model components and evaluation procedures to their implementation.
