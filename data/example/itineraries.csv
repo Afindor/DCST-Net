@@ -1,0 +1,5 @@
+itinerary_id,origin,destination,flight_id,frequency
+ODF001,BJS,SHA,CA100,1800
+ODF002,BJS,CAN,CA200,1350
+ODF003,SHA,CAN,MU300,1250
+ODF004,SHA,BJS,MU400,1600

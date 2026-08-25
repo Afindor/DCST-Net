@@ -1,0 +1,22 @@
+name: test
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install -e ".[dev]"
+      - run: python scripts/generate_example_data.py
+      - run: ruff check src scripts tests
+      - run: python -m unittest discover -s tests -v
+      - run: python scripts/audit_repository.py
+      - run: python scripts/source_manifest.py

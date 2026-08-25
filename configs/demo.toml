@@ -1,0 +1,48 @@
+[experiment]
+seed = 2027
+output_dir = "artifacts/demo"
+device = "auto"
+
+[data]
+prices_path = "data/example/prices.csv"
+itineraries_path = "data/example/itineraries.csv"
+co_bookings_path = "data/example/co_bookings.csv"
+train_end = "2024-01-24"
+validation_end = "2024-01-29"
+test_end = "2024-02-04"
+max_interval = 14
+lookback = 8
+missing_threshold = 0.5
+horizon = 3
+alert_threshold = 30.0
+
+[graph]
+layers = 2
+heads = 2
+top_k = 4
+hidden_dim = 16
+embedding_dim = 8
+co_booking_percentile = 85.0
+jaccard_threshold = 0.3
+
+[calendar]
+receptive_fields = [3, 5, 7]
+hidden_dim = 16
+
+[residual]
+moving_average_window = 5
+diffusion_steps = 50
+ddim_steps = 10
+hidden_dim = 32
+
+[training]
+learning_rate = 0.001
+weight_decay = 0.0001
+batch_size = 16
+max_epochs = 2
+patience = 2
+softmin_rho = 2.0
+alert_lambda = 0.5
+false_alert_weight = 1.2
+missed_opportunity_weight = 0.8
+num_workers = 0

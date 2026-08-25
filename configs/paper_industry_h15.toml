@@ -1,0 +1,48 @@
+[experiment]
+seed = 2027
+output_dir = "artifacts/paper_industry_h15"
+device = "auto"
+
+[data]
+prices_path = "data/private/industry/prices.csv"
+itineraries_path = "data/private/industry/itineraries.csv"
+co_bookings_path = "data/private/industry/co_bookings.csv"
+train_end = "2024-12-31"
+validation_end = "2025-02-28"
+test_end = "2025-06-30"
+max_interval = 90
+lookback = 30
+missing_threshold = 0.5
+horizon = 15
+alert_threshold = 50.0
+
+[graph]
+layers = 2
+heads = 4
+top_k = 12
+hidden_dim = 64
+embedding_dim = 32
+co_booking_percentile = 85.0
+jaccard_threshold = 0.3
+
+[calendar]
+receptive_fields = [3, 7, 14, 30]
+hidden_dim = 64
+
+[residual]
+moving_average_window = 7
+diffusion_steps = 1000
+ddim_steps = 20
+hidden_dim = 128
+
+[training]
+learning_rate = 0.0003
+weight_decay = 0.0001
+batch_size = 512
+max_epochs = 50
+patience = 7
+softmin_rho = 2.0
+alert_lambda = 0.5
+false_alert_weight = 1.2
+missed_opportunity_weight = 0.8
+num_workers = 4
