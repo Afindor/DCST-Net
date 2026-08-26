@@ -113,5 +113,6 @@ python scripts/source_manifest.py
 
 The tests cover temporal masking, as-of graph selection, phase separation,
 losses, replay metrics, serving behavior, and an end-to-end run on the example
-dataset. [REPRODUCIBILITY.md](REPRODUCIBILITY.md) provides a compact map from
-the model components and evaluation procedures to their implementation.
+dataset. [IMPLEMENTATION.md](IMPLEMENTATION.md) describes the implementation
+layout, temporal data handling, and saved run state. Additional development
+commands are collected in [DEVELOPMENT.md](DEVELOPMENT.md).
