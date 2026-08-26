@@ -67,14 +67,9 @@ tests/                           Unit and end-to-end tests
 
 ## Configurations
 
-`configs/paper_sampled_h15.toml` and `configs/paper_industry_h15.toml` record
-the sampled-data and industry-data settings used for the 15-day horizon. They
-configure two graph layers, four attention heads, twelve retained neighbors,
-64/32-dimensional graph representations, calendar windows `{3, 7, 14, 30}`, a
-seven-day residual trend, a two-layer 128-unit denoiser, 1,000 diffusion steps,
-20 deterministic DDIM steps, and the decision-loss weights. Experiments at 3,
-7, and 30 days use the same model settings with the corresponding
-`data.horizon` value.
+`configs/sampled_h15.toml` and `configs/industry_h15.toml` contain the training
+profiles for the sampled and industry datasets at the 15-day horizon. Other
+horizons use the same structure with the corresponding `data.horizon` value.
 
 Configuration digests are stored with checkpoints and checked when a run is
 resumed. Random seeds, input paths, split dates, model sizes, and optimization
@@ -94,11 +89,10 @@ constructed over the full observation period.
 
 ## Baseline integration
 
-Our experiments use the official implementations of ARIMA, PatchTST, TimesNet,
-iTransformer, MTGNN, PDFormer, and STAEformer. To avoid maintaining forks of
-those projects, `scripts/export_baseline_arrays.py` exports booking-date-ordered
-values, masks, targets, and training-split normalization in a common array
-format. Baseline predictions can then be evaluated with the alert metrics in
+`scripts/export_baseline_arrays.py` exports booking-date-ordered values, masks,
+targets, and training-split normalization in a common array format. This keeps
+third-party forecasting models in their own environments while sharing the same
+inputs and evaluation code. Their predictions can be evaluated with
 `dcstnet.evaluation.metrics` after conversion to the CSV layout produced by
 `dcst evaluate`.
 
@@ -107,8 +101,6 @@ format. Baseline predictions can then be evaluated with the alert metrics in
 ```bash
 python -m unittest discover -s tests -v
 ruff check src scripts tests
-python scripts/audit_repository.py
-python scripts/source_manifest.py
 ```
 
 The tests cover temporal masking, as-of graph selection, phase separation,

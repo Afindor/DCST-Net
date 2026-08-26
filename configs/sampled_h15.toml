@@ -1,6 +1,6 @@
 [experiment]
 seed = 2027
-output_dir = "artifacts/paper_sampled_h15"
+output_dir = "artifacts/sampled_h15"
 device = "auto"
 
 [data]

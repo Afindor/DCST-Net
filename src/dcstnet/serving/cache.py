@@ -8,7 +8,7 @@ from pathlib import Path
 
 
 class TrajectoryCache:
-    """SQLite-backed local implementation of the completed-refresh cache contract."""
+    """SQLite-backed cache for completed trajectory refreshes."""
 
     def __init__(self, path: str | Path) -> None:
         self.path = Path(path)

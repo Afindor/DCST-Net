@@ -1,6 +1,6 @@
 PYTHON ?= python3
 
-.PHONY: install demo test audit clean
+.PHONY: install demo test lint clean
 
 install:
 	$(PYTHON) -m pip install -e .
@@ -11,8 +11,8 @@ demo:
 test:
 	$(PYTHON) -m unittest discover -s tests -v
 
-audit:
-	$(PYTHON) scripts/audit_repository.py
+lint:
+	ruff check src scripts tests
 
 clean:
 	$(PYTHON) scripts/clean_artifacts.py
